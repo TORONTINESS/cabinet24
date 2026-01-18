@@ -3,120 +3,272 @@
 <head>
   <meta charset="UTF-8" />
   <title>Cabinet24</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Telegram WebApp API -->
+  <!-- Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
     body {
       margin: 0;
-      padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
     }
+
+    .container {
+      padding: 16px;
+    }
+
+    h1, h2 {
+      margin: 0 0 12px 0;
+    }
+
     .card {
       background: #fff;
-      padding: 16px;
-      border-radius: 12px;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
     }
-    h1 {
-      margin-top: 0;
-      font-size: 20px;
-    }
+
     .muted {
       color: #777;
       font-size: 14px;
     }
-  </style>
-</head>
-<body>
 
-  <div class="card">
-    <h1>Cabinet24</h1>
-    <div id="user"></div>
-    <div class="muted">Экран: Мои объекты (заглушка)</div>
-  </div>
-
-<div id="app"></div>
-
-  <script>
-  // [1] Инициализация Telegram
-  const tg = window.Telegram.WebApp;
-  tg.ready();
-
-  // [2] Получаем пользователя
-  const user = tg.initDataUnsafe?.user;
-
-  // [3] Backend API (ВСТАВИМ ЧУТЬ ПОЗЖЕ)
-  const API_URL = 'https://api.telegram.org/bot8589251044:AAGzYr3XUVZdRjrnIxqbH62JpnlFsI_jvCw/setWebhook?url=https://script.google.com/macros/s/AKfycbwhrjRTbMsEYa7v9PBhOBfrOsG2Zj-jbkI_FEN9F5u7uuTb6PkMgzZMGjNzNVsj6kZU1Q/exec';
-
-  // [4] Контейнер для данных
-  const app = document.getElementById('app');
-
-  // [5] Точка входа
-  if (!user) {
-    app.innerText = 'Откройте приложение через Telegram';
-  } else {
-    loadData(user.id);
-  }
-
-  // [6] Запрос данных
-  function loadData(telegramId) {
-    fetch(`${API_URL}?telegramId=${telegramId}`)
-      .then(r => r.json())
-      .then(data => render(data))
-      .catch(() => {
-        app.innerText = 'Ошибка загрузки данных';
-      });
-  }
-
-  function render(objects) {
-  // [7.1] Защита: если данных нет
-  if (!objects || objects.length === 0) {
-    app.innerText = 'Нет объектов';
-    return;
-  }
-
-  // [7.2] Очищаем контейнер
-  app.innerHTML = '';
-
-  // [7.3] Проходим по объектам
-  objects.forEach(object => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.style.marginTop = '12px';
-
-    // [7.4] Заголовок объекта
-    let html = `
-      <h2>${object.name || 'Объект'}</h2>
-    `;
-
-    // [7.5] Если у объекта есть услуги
-    if (object.services && object.services.length > 0) {
-      object.services.forEach(service => {
-        html += `
-          <div class="muted" style="margin-bottom: 8px;">
-            <b>${service.name}</b><br>
-            Статус: ${service.status}<br>
-            Остаток: ${service.balance}
-          </div>
-        `;
-      });
-    } else {
-      html += `<div class="muted">Нет услуг</div>`;
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
     }
 
-    // [7.6] Вставляем HTML в карточку
-    card.innerHTML = html;
+    button {
+      background: #2a8cff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
 
-    // [7.7] Добавляем карточку в приложение
-    app.appendChild(card);
+    button.secondary {
+      background: #ddd;
+      color: #000;
+    }
+
+    .object-item {
+      cursor: pointer;
+    }
+
+    .doc {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+<div class="container" id="app"></div>
+
+<script>
+/* =====================================================
+   CONFIG
+===================================================== */
+const API_URL = 'ВСТАВЬ_URL_BACKEND'; // без ?action
+
+/* =====================================================
+   INIT TELEGRAM
+===================================================== */
+const tg = window.Telegram.WebApp;
+tg.ready();
+
+const user = tg.initDataUnsafe?.user;
+const app = document.getElementById('app');
+
+if (!user) {
+  app.innerText = 'Откройте приложение через Telegram';
+} else {
+  loadObjects();
+}
+
+/* =====================================================
+   STATE
+===================================================== */
+let allObjects = [];
+let currentObject = null;
+
+/* =====================================================
+   API HELPERS
+===================================================== */
+function apiGet(action, params = {}) {
+  const query = new URLSearchParams({
+    action,
+    telegramId: user.id,
+    ...params
+  });
+  return fetch(`${API_URL}?${query}`).then(r => r.json());
+}
+
+function apiPost(data) {
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(r => r.json());
+}
+
+/* =====================================================
+   MAIN SCREEN
+===================================================== */
+function loadObjects() {
+  apiGet('getObjects').then(data => {
+    allObjects = data;
+    renderMain();
   });
 }
 
+function renderMain() {
+  app.innerHTML = `
+    <h1>Здравствуйте, ${user.first_name || ''}</h1>
+
+    <input id="search" placeholder="Поиск объекта">
+
+    <button onclick="renderAddObject()">➕ Добавить объект</button>
+
+    <div id="objects"></div>
+  `;
+
+  document.getElementById('search').oninput = e => {
+    renderObjectList(e.target.value);
+  };
+
+  renderObjectList('');
+}
+
+function renderObjectList(query) {
+  const list = document.getElementById('objects');
+  list.innerHTML = '';
+
+  allObjects
+    .filter(o => o.name.toLowerCase().includes(query.toLowerCase()))
+    .forEach(o => {
+      const el = document.createElement('div');
+      el.className = 'card object-item';
+      el.innerHTML = `
+        <h2>${o.name}</h2>
+        <div class="muted">Остаток: ${o.balance}</div>
+      `;
+      el.onclick = () => renderObject(o);
+      list.appendChild(el);
+    });
+}
+
+/* =====================================================
+   ADD OBJECT
+===================================================== */
+function renderAddObject() {
+  app.innerHTML = `
+    <h2>Новый объект</h2>
+
+    <input id="name" placeholder="Название объекта">
+    <input id="price" type="number" placeholder="Стоимость">
+    <input id="note" placeholder="Описание">
+
+    <button onclick="saveObject()">Сохранить</button>
+    <button class="secondary" onclick="renderMain()">Назад</button>
+  `;
+}
+
+function saveObject() {
+  const name = document.getElementById('name').value;
+  const price = document.getElementById('price').value;
+  const note = document.getElementById('note').value;
+
+  apiPost({
+    action: 'addObject',
+    telegramId: user.id,
+    name,
+    price,
+    note
+  }).then(() => loadObjects());
+}
+
+/* =====================================================
+   OBJECT SCREEN
+===================================================== */
+function renderObject(obj) {
+  currentObject = obj;
+
+  app.innerHTML = `
+    <h2>${obj.name}</h2>
+
+    <div class="card">
+      <div>Стоимость: ${obj.price}</div>
+      <div>Оплачено: ${obj.payments_count} / ${obj.payments_sum}</div>
+      <div><b>Остаток: ${obj.balance}</b></div>
+    </div>
+
+    <div class="card">
+      <h3>Услуги</h3>
+      ${obj.services.map(s => `
+        <div class="muted">${s.name} — ${s.status}</div>
+      `).join('')}
+    </div>
+
+    <button onclick="renderDocuments()">📎 Документы</button>
+    <button class="secondary" onclick="renderMain()">Назад</button>
+  `;
+}
+
+/* =====================================================
+   DOCUMENTS
+===================================================== */
+function renderDocuments() {
+  apiGet('getDocuments', { objectId: currentObject.id }).then(docs => {
+    app.innerHTML = `
+      <h2>Документы</h2>
+
+      <div class="card">
+        ${docs.map(d => `
+          <div class="doc">
+            <span>📄 ${d.name}</span>
+            <a target="_blank"
+               href="https://drive.google.com/uc?id=${d.file_id}">
+               Скачать
+            </a>
+          </div>
+        `).join('')}
+      </div>
+
+      <input type="file" id="file">
+      <button onclick="uploadDoc()">➕ Добавить документ</button>
+      <button class="secondary" onclick="renderObject(currentObject)">Назад</button>
+    `;
+  });
+}
+
+function uploadDoc() {
+  const file = document.getElementById('file').files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    apiPost({
+      action: 'uploadDocument',
+      objectId: currentObject.id,
+      fileName: file.name,
+      mimeType: file.type,
+      file: reader.result.split(',')[1]
+    }).then(() => renderDocuments());
+  };
+  reader.readAsDataURL(file);
+}
 </script>
-
-
 </body>
 </html>
