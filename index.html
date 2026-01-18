@@ -77,199 +77,28 @@
 <div class="container" id="app"></div>
 
 <script>
-/* =====================================================
-   CONFIG
-===================================================== */
-const API_URL = 'https://script.google.com/macros/s/AKfycbw92F0-cRwx7v7r27tx-Cx6tHI2O6S6dxkcTDzyG89zoFUDUhmt_hLNaLccqBQu3qUECw/exec'; // без ?action
+document.body.innerHTML = '<h2>JS стартовал</h2>';
 
-/* =====================================================
-   INIT TELEGRAM
-===================================================== */
-const tg = window.Telegram.WebApp;
-tg.ready();
+try {
+  const tg = window.Telegram.WebApp;
+  document.body.innerHTML += '<div>Telegram объект есть</div>';
 
-const user = tg.initDataUnsafe?.user;
-const app = document.getElementById('app');
+  tg.ready();
 
-if (!user) {
-  app.innerText = 'Откройте приложение через Telegram';
-} else {
-  loadObjects();
-}
+  document.body.innerHTML += '<div>tg.ready() выполнен</div>';
 
-/* =====================================================
-   STATE
-===================================================== */
-let allObjects = [];
-let currentObject = null;
+  document.body.innerHTML += '<pre>' +
+    JSON.stringify(tg.initDataUnsafe, null, 2) +
+    '</pre>';
 
-/* =====================================================
-   API HELPERS
-===================================================== */
-function apiGet(action, params = {}) {
-  const query = new URLSearchParams({
-    action,
-    telegramId: user.id,
-    ...params
-  });
-  return fetch(`${API_URL}?${query}`).then(r => r.json());
-}
-
-function apiPost(data) {
-  return fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  }).then(r => r.json());
-}
-
-/* =====================================================
-   MAIN SCREEN
-===================================================== */
-function loadObjects() {
-  apiGet('getObjects').then(data => {
-    allObjects = data;
-    renderMain();
-  });
-}
-
-function renderMain() {
-  app.innerHTML = `
-    <h1>Здравствуйте, ${user.first_name || ''}</h1>
-
-    <input id="search" placeholder="Поиск объекта">
-
-    <button onclick="renderAddObject()">➕ Добавить объект</button>
-
-    <div id="objects"></div>
+} catch (e) {
+  document.body.innerHTML = `
+    <h2>JS ошибка</h2>
+    <pre>${e.message}</pre>
   `;
-
-  document.getElementById('search').oninput = e => {
-    renderObjectList(e.target.value);
-  };
-
-  renderObjectList('');
-}
-
-function renderObjectList(query) {
-  const list = document.getElementById('objects');
-  list.innerHTML = '';
-
-  allObjects
-    .filter(o => o.name.toLowerCase().includes(query.toLowerCase()))
-    .forEach(o => {
-      const el = document.createElement('div');
-      el.className = 'card object-item';
-      el.innerHTML = `
-        <h2>${o.name}</h2>
-        <div class="muted">Остаток: ${o.balance}</div>
-      `;
-      el.onclick = () => renderObject(o);
-      list.appendChild(el);
-    });
-}
-
-/* =====================================================
-   ADD OBJECT
-===================================================== */
-function renderAddObject() {
-  app.innerHTML = `
-    <h2>Новый объект</h2>
-
-    <input id="name" placeholder="Название объекта">
-    <input id="price" type="number" placeholder="Стоимость">
-    <input id="note" placeholder="Описание">
-
-    <button onclick="saveObject()">Сохранить</button>
-    <button class="secondary" onclick="renderMain()">Назад</button>
-  `;
-}
-
-function saveObject() {
-  const name = document.getElementById('name').value;
-  const price = document.getElementById('price').value;
-  const note = document.getElementById('note').value;
-
-  apiPost({
-    action: 'addObject',
-    telegramId: user.id,
-    name,
-    price,
-    note
-  }).then(() => loadObjects());
-}
-
-/* =====================================================
-   OBJECT SCREEN
-===================================================== */
-function renderObject(obj) {
-  currentObject = obj;
-
-  app.innerHTML = `
-    <h2>${obj.name}</h2>
-
-    <div class="card">
-      <div>Стоимость: ${obj.price}</div>
-      <div>Оплачено: ${obj.payments_count} / ${obj.payments_sum}</div>
-      <div><b>Остаток: ${obj.balance}</b></div>
-    </div>
-
-    <div class="card">
-      <h3>Услуги</h3>
-      ${obj.services.map(s => `
-        <div class="muted">${s.name} — ${s.status}</div>
-      `).join('')}
-    </div>
-
-    <button onclick="renderDocuments()">📎 Документы</button>
-    <button class="secondary" onclick="renderMain()">Назад</button>
-  `;
-}
-
-/* =====================================================
-   DOCUMENTS
-===================================================== */
-function renderDocuments() {
-  apiGet('getDocuments', { objectId: currentObject.id }).then(docs => {
-    app.innerHTML = `
-      <h2>Документы</h2>
-
-      <div class="card">
-        ${docs.map(d => `
-          <div class="doc">
-            <span>📄 ${d.name}</span>
-            <a target="_blank"
-               href="https://drive.google.com/uc?id=${d.file_id}">
-               Скачать
-            </a>
-          </div>
-        `).join('')}
-      </div>
-
-      <input type="file" id="file">
-      <button onclick="uploadDoc()">➕ Добавить документ</button>
-      <button class="secondary" onclick="renderObject(currentObject)">Назад</button>
-    `;
-  });
-}
-
-function uploadDoc() {
-  const file = document.getElementById('file').files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    apiPost({
-      action: 'uploadDocument',
-      objectId: currentObject.id,
-      fileName: file.name,
-      mimeType: file.type,
-      file: reader.result.split(',')[1]
-    }).then(() => renderDocuments());
-  };
-  reader.readAsDataURL(file);
 }
 </script>
 </body>
 </html>
+
 
