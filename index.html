@@ -38,21 +38,70 @@
     <div class="muted">Экран: Мои объекты (заглушка)</div>
   </div>
 
+<div id="app"></div>
+
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.ready();
+  // [1] Инициализация Telegram
+  const tg = window.Telegram.WebApp;
+  tg.ready();
 
-    const user = tg.initDataUnsafe?.user;
+  // [2] Получаем пользователя
+  const user = tg.initDataUnsafe?.user;
 
-    if (user) {
-      document.getElementById("user").innerHTML = `
-        👤 ${user.first_name || ""} ${user.last_name || ""}<br>
-        🆔 Telegram ID: <b>${user.id}</b>
-      `;
-    } else {
-      document.getElementById("user").innerText = "Пользователь не определён";
+  // [3] Backend API (ВСТАВИМ ЧУТЬ ПОЗЖЕ)
+  const API_URL = 'https://api.telegram.org/bot8589251044:AAGzYr3XUVZdRjrnIxqbH62JpnlFsI_jvCw/setWebhook?url=https://script.google.com/macros/s/AKfycbwhrjRTbMsEYa7v9PBhOBfrOsG2Zj-jbkI_FEN9F5u7uuTb6PkMgzZMGjNzNVsj6kZU1Q/exec';
+
+  // [4] Контейнер для данных
+  const app = document.getElementById('app');
+
+  // [5] Точка входа
+  if (!user) {
+    app.innerText = 'Откройте приложение через Telegram';
+  } else {
+    loadData(user.id);
+  }
+
+  // [6] Запрос данных
+  function loadData(telegramId) {
+    fetch(`${API_URL}?telegramId=${telegramId}`)
+      .then(r => r.json())
+      .then(data => render(data))
+      .catch(() => {
+        app.innerText = 'Ошибка загрузки данных';
+      });
+  }
+
+  // [7] Отрисовка
+  function render(objects) {
+    if (!objects.length) {
+      app.innerText = 'Нет объектов';
+      return;
     }
-  </script>
+
+    app.innerHTML = '';
+
+    objects.forEach(obj => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.marginTop = '12px';
+
+      card.innerHTML = `
+        <h2>${obj.name || 'Объект'}</h2>
+
+        ${obj.services.map(s => `
+          <div class="muted">
+            <b>${s.name}</b><br>
+            Статус: ${s.status}<br>
+            Остаток: ${s.balance}
+          </div>
+        `).join('')}
+      `;
+
+      app.appendChild(card);
+    });
+  }
+</script>
+
 
 </body>
 </html>
