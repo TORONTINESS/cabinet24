@@ -71,38 +71,50 @@
       });
   }
 
-  // [7] Отрисовка
   function render(objects) {
+  // [7.1] Защита: если данных нет
+  if (!objects || objects.length === 0) {
+    app.innerText = 'Нет объектов';
+    return;
+  }
 
-    console.log('OBJECTS FROM API:', objects);
+  // [7.2] Очищаем контейнер
+  app.innerHTML = '';
 
-    if (!objects.length) {
-      app.innerText = 'Нет объектов';
-      return;
+  // [7.3] Проходим по объектам
+  objects.forEach(object => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginTop = '12px';
+
+    // [7.4] Заголовок объекта
+    let html = `
+      <h2>${object.name || 'Объект'}</h2>
+    `;
+
+    // [7.5] Если у объекта есть услуги
+    if (object.services && object.services.length > 0) {
+      object.services.forEach(service => {
+        html += `
+          <div class="muted" style="margin-bottom: 8px;">
+            <b>${service.name}</b><br>
+            Статус: ${service.status}<br>
+            Остаток: ${service.balance}
+          </div>
+        `;
+      });
+    } else {
+      html += `<div class="muted">Нет услуг</div>`;
     }
 
-    app.innerHTML = '';
+    // [7.6] Вставляем HTML в карточку
+    card.innerHTML = html;
 
-    objects.forEach(obj => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.style.marginTop = '12px';
+    // [7.7] Добавляем карточку в приложение
+    app.appendChild(card);
+  });
+}
 
-      card.innerHTML = `
-        <h2>${obj.name || 'Объект'}</h2>
-
-        ${obj.services.map(s => `
-          <div class="muted">
-            <b>${s.name}</b><br>
-            Статус: ${s.status}<br>
-            Остаток: ${s.balance}
-          </div>
-        `).join('')}
-      `;
-
-      app.appendChild(card);
-    });
-  }
 </script>
 
 
