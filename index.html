@@ -1,104 +1,46 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <title>Cabinet24</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Telegram WebApp -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-    }
-
-    .container {
-      padding: 16px;
-    }
-
-    h1, h2 {
-      margin: 0 0 12px 0;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .muted {
-      color: #777;
-      font-size: 14px;
-    }
-
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
-
-    button {
-      background: #2a8cff;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-    }
-
-    button.secondary {
-      background: #ddd;
-      color: #000;
-    }
-
-    .object-item {
-      cursor: pointer;
-    }
-
-    .doc {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .hidden {
-      display: none;
-    }
-  </style>
-</head>
-
-<body>
-<div class="container" id="app"></div>
-
 <script>
-document.body.innerHTML = '<h2>JS стартовал</h2>';
+const tg = window.Telegram.WebApp;
+tg.ready();
 
-try {
-  const tg = window.Telegram.WebApp;
-  document.body.innerHTML += '<div>Telegram объект есть</div>';
+const app = document.getElementById('app');
 
-  tg.ready();
+// ================================
+// [1] Получаем пользователя ПРАВИЛЬНО
+// ================================
+let user = null;
 
-  document.body.innerHTML += '<div>tg.ready() выполнен</div>';
+// Пытаемся через initDataUnsafe (если есть)
+if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+  user = tg.initDataUnsafe.user;
+}
 
-  document.body.innerHTML += '<pre>' +
-    JSON.stringify(tg.initDataUnsafe, null, 2) +
-    '</pre>';
+// Если не получилось — парсим initData
+if (!user && tg.initData) {
+  const params = new URLSearchParams(tg.initData);
+  if (params.has('user')) {
+    try {
+      user = JSON.parse(params.get('user'));
+    } catch (e) {}
+  }
+}
 
-} catch (e) {
-  document.body.innerHTML = `
-    <h2>JS ошибка</h2>
-    <pre>${e.message}</pre>
+// ================================
+// [2] Проверка
+// ================================
+if (!user || !user.id) {
+  app.innerHTML = `
+    <h2>Ошибка авторизации</h2>
+    <p class="muted">
+      Telegram не передал данные пользователя.<br>
+      Пожалуйста, откройте приложение через кнопку бота.
+    </p>
+    <pre>${tg.initData || 'initData пусто'}</pre>
+  `;
+} else {
+  app.innerHTML = `
+    <h2>Здравствуйте, ${user.first_name}</h2>
+    <p class="muted">Telegram ID: ${user.id}</p>
+    <p>🎉 Авторизация прошла успешно</p>
   `;
 }
 </script>
-</body>
-</html>
-
-
