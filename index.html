@@ -73,6 +73,9 @@
 
   // [7] Отрисовка
   function render(objects) {
+
+    console.log('OBJECTS FROM API:', objects);
+
     if (!objects.length) {
       app.innerText = 'Нет объектов';
       return;
